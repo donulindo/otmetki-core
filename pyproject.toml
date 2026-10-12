@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "otmetki-core"
+version = "0.1.0"
+description = "A small educational library for courses, materials, assignments and source-aware text context."
+requires-python = ">=3.11"
+license = "Apache-2.0"
+readme = "README.md"
+dependencies = []
+
+[project.scripts]
+otmetki-core = "otmetki_core.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+otmetki_core = ["migrations/*.sql", "web/*.html", "web/*.css", "web/*.js"]

@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "files": [
+    ".gitignore",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "pyproject.toml",
+    "public-files.json",
+    "docs/architecture.md",
+    "docs/data-model.md",
+    "docs/api.md",
+    "docs/development.md",
+    "src/otmetki_core/__init__.py",
+    "src/otmetki_core/__main__.py",
+    "src/otmetki_core/store.py",
+    "src/otmetki_core/context.py",
+    "src/otmetki_core/api.py",
+    "src/otmetki_core/demo.py",
+    "src/otmetki_core/cli.py",
+    "src/otmetki_core/migrations/001_initial.sql",
+    "src/otmetki_core/web/index.html",
+    "src/otmetki_core/web/app.css",
+    "src/otmetki_core/web/app.js",
+    "tests/test_core.py",
+    "tests/test_export.py",
+    "tests/test_http.py",
+    "tools/export_public.py"
+  ]
+}

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Отметки · учебная основа</title><link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/">отметки<span>.</span></a><span class="badge">Учебный пример</span></header>
+<main>
+  <section class="intro"><p class="eyebrow">ОТКРЫТАЯ УЧЕБНАЯ ОСНОВА</p><h1>Начни с предмета.</h1><p>Локальная библиотека, материалы и работы. Все примеры вымышлены; сервисы ИИ не подключены.</p></section>
+  <section class="toolbar"><label>Направление <select id="direction"><option value="management">Менеджмент</option><option value="economics">Экономика</option></select></label><p id="status" role="status"></p></section>
+  <section id="courses" class="grid" aria-label="Предметы"></section>
+  <section id="detail" hidden>
+    <button id="back" class="subtle">← К предметам</button><h2 id="course-title"></h2>
+    <div class="section-heading"><h3>Материалы</h3><button id="export" disabled>Скачать выбранный текст</button></div><p class="muted">Отметь материалы для контекста. Точные повторы объединяются со ссылками на оба источника.</p><div id="materials" class="stack"></div>
+    <h3>Работы</h3><div id="assignments" class="stack"></div><h3>Возможные баллы</h3><div id="points" class="stack"></div>
+  </section>
+  <footer>Код и документация — Apache 2.0. Это локальный пример, без персональных данных и рабочих интеграций.</footer>
+</main>
+<dialog id="material-dialog"><button id="close-dialog" class="subtle">Закрыть ×</button><h2 id="material-title"></h2><p id="material-version" class="muted"></p><div id="material-blocks" class="stack"></div></dialog>
+</body></html>
