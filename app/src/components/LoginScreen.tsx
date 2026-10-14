@@ -39,7 +39,7 @@ export default function LoginScreen() {
     finally { setBusy(false); }
   }
   return <div className="login-page">
-    <div className="login-brand"><img src="/mark.svg" alt="" /><span>{PRODUCT_NAME}<span className="brand-dot">.</span></span><span className="login-preview">закрытый предпросмотр</span></div>
+    <div className="login-brand"><span>{PRODUCT_NAME}<span className="brand-dot">.</span></span><span className="login-preview">закрытый предпросмотр</span></div>
     <main className="login-main">
       <section className="login-story">
         <div className="eyebrow"><span className="tiny-dot" /> УЧЁБА СТАНОВИТСЯ ЯСНЕЕ</div>

@@ -147,7 +147,7 @@ export default function Workspace({initialViewer,repositoryUrl=null}: {initialVi
   return <div className="workspace"><TelegramBridge canGoBack={section!=='home'||!!materialOpen||contextOpen} onBack={telegramBack}/>
     {mobileNav&&<button className="sidebar-scrim" aria-label="Закрыть навигацию" onClick={()=>setMobileNav(false)}/>}
     <aside className={`sidebar ${mobileNav?'sidebar-open':''}`}>
-      <a className="brand" href="#" onClick={e=>{e.preventDefault();navigate('home');}}><img src="/mark.svg" alt=""/><span>{PRODUCT_NAME}<span className="brand-dot">.</span></span></a>
+      <a className="brand" href="#" onClick={e=>{e.preventDefault();navigate('home');}}><span>{PRODUCT_NAME}<span className="brand-dot">.</span></span></a>
       <div className="workspace-badge"><span className="tiny-dot"/>{PRODUCT_FUNCTIONS}</div>
       <button className="new-chat-button" onClick={()=>showNewChat(section==='tutor'?'tutor':'work')} disabled={loading||!subjects.length}><Plus size={18}/><span>Новая беседа</span><span className="shortcut">↗</span></button>
       <span className="sidebar-label">ПРОСТРАНСТВО</span>

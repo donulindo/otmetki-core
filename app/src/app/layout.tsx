@@ -7,7 +7,7 @@ import 'katex/dist/katex.min.css';
 export const metadata: Metadata = {
   title: PRODUCT_TITLE,
   description: PRODUCT_DESCRIPTION,
-  icons:{icon:'/mark.svg'},
+  icons:{icon:'/mark.svg?v=wordmark'},
   robots: {index: false, follow: false}
 };
 export default function RootLayout({children}: {children: React.ReactNode}) {
