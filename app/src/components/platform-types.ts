@@ -1,0 +1,6 @@
+export interface StudyProfile {faculty:string;direction:string;course:number;academicYear:string;semester:number;group:string;}
+export interface StudyAudience extends StudyProfile {id:string;scope:'group'|'stream';label:string;archived:boolean;groups:string[];subjectIds:string[];}
+export interface FeatureInfo {id:string;name:string;status:string;enabled:boolean;canAct:boolean;}
+export const readiness:Record<string,string>={available:'Доступно',beta:'Бета',closed_test:'Закрытое тестирование',development:'В разработке',unsupported:'Не поддерживается'};
+export const featureLabels:Record<string,string>={materials:'Материалы',chat:'Беседы',tutor:'Репетитор',feedback:'Обратная связь',schedule:'Расписание',work_calendar:'Работы'};
+export interface PlatformState {profile:StudyProfile;features:FeatureInfo[];audiences:StudyAudience[];moderation:boolean;profiles?:{id:string;displayName:string;profile:StudyProfile}[];pendingPublications?:{material_id:string;title:string;audienceLabel?:string}[];memberships?:{user_id:string;audience_id:string;active:number}[];rules?:{id:string;feature:string;selector:Partial<StudyProfile>;status:string}[];grants?:{user_id:string;feature:string}[];allSubjects?:{id:string;name:string;direction:string}[];}

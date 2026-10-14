@@ -1,0 +1,42 @@
+{
+  "name": "otmetki-open-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3000",
+    "typecheck": "tsc --noEmit",
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "test:client": "node --import tsx --test tests/client/*.test.ts",
+    "test:e2e": "playwright test",
+    "demo": "node --conditions=react-server --import tsx tools/demo.ts"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "4.0.91",
+    "@ai-sdk/react": "4.0.140",
+    "@streamdown/math": "latest",
+    "ai": "7.0.137",
+    "docx": "latest",
+    "https-proxy-agent": "^9.1.0",
+    "lucide-react": "latest",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "0.0.1",
+    "socks-proxy-agent": "^10.1.0",
+    "streamdown": "latest",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

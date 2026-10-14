@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.data/
+.venv/
+*.log
+coverage/
+playwright-report/
+test-results/
