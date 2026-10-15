@@ -19,9 +19,13 @@ from urllib.parse import urlsplit
 
 
 BASE = Path(__file__).resolve().parents[1]
-ALLOWED_HOSTS = {"www.apache.org", "apache.org", "docs.python.org", "example.org", "localhost", "127.0.0.1"}
+ALLOWED_HOSTS = {"www.apache.org", "apache.org", "docs.python.org", "example.org", "localhost", "127.0.0.1", "github.com", "registry.npmjs.org", "nextjs.org", "ai-sdk.dev", "telegram.org", "t.me", "schemas.openxmlformats.org", "www.w3.org", "scripts.sil.org", "opencollective.com", "tidelift.com"}
 FORBIDDEN_NAMES = {"SPEC.md", "AGENTS.md", ".git", ".env", "node_modules", ".data", "__pycache__"}
 FORBIDDEN_SUFFIXES = {".db", ".sqlite", ".sqlite3", ".pem", ".key", ".log", ".png", ".jpg", ".jpeg", ".pdf", ".docx", ".zip"}
+FONT_HASHES = {
+    "fraunces.ttf":"3eb6cf0a14feb1876cc464fa093af4e0c5b05dc46dec65619c1d95f2a1ab5aa7",
+    "inter.ttf":"1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba",
+}
 SECRET_PATTERNS = [
     re.compile(r"\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}\b"),
     re.compile(r"\bcfat_[A-Za-z0-9_-]{20,}\b"),
@@ -53,7 +57,7 @@ def inspect_text(content: str, denied_terms: list[str] = ()) -> set[str]:
     for match in re.finditer(r"https?://[^\s\"'<>\)\]]+", content):
         try:
             parsed = urlsplit(match[0])
-            if parsed.username or parsed.password or parsed.hostname not in ALLOWED_HOSTS:
+            if parsed.username or parsed.password or (parsed.hostname not in ALLOWED_HOSTS and not (parsed.hostname or '').endswith('.example')):
                 findings.add("unapproved-url")
         except ValueError:
             findings.add("unapproved-url")
@@ -95,7 +99,9 @@ def export(base: Path, output: Path, denied_terms: list[str] = ()) -> dict:
         try:
             content = raw.decode("utf-8")
         except UnicodeDecodeError:
-            raise ValueError("Only reviewed UTF-8 source files may be exported.") from None
+            if not name.startswith("app/public/") or FONT_HASHES.get(Path(name).name)!=hashlib.sha256(raw).hexdigest():
+                raise ValueError("Only explicitly pinned licensed fonts may be binary.") from None
+            content = ""
         findings = inspect_text(content, denied_terms)
         if findings:
             failures.append({"file": name, "checks": sorted(findings)})
