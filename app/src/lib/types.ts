@@ -6,6 +6,7 @@ export interface Viewer { id: string; displayName: string; group: string; role: 
 export interface Subject { id: string; name: string; shortName: string; direction: 'management' | 'economics'; group: string; semester: number; color: string; }
 export interface TextBlock { id: string; text: string; kind: 'text' | 'table' | 'formula' | 'image'; page?: number; slide?: number; warning?: string; imageFile?: string; }
 export interface Material {
+  coursePosition?:{section:number;item:number};
   hasOriginal?:boolean;
   access?: {scope:string;canEdit:boolean;canArchive:boolean;audienceId:string|null;audienceLabel?:string};
   id: string; ownerId: string; title: string; subjectId: string; kind: MaterialKind; topic: string;

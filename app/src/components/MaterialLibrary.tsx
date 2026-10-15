@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, useDeferredValue } from 'react';
 import {
-  ArrowDownToLine, ArrowUpRight, BookOpen, Check, ChevronDown, FileImage,
+  AlertCircle, Archive, List, LayoutGrid, ArrowDownToLine, ArrowUpRight, BookOpen, Check, ChevronDown, FileImage,
   FileText, Layers3, LoaderCircle, MessageSquare, Plus, Search, UploadCloud, X,
 } from 'lucide-react';
 import type { Material, MaterialKind, MaterialStatus, Subject } from '@/lib/types';
 import type {StudyAudience} from './platform-types';
 import { request } from './client-api';
 import { isLinkOnly,hasOriginal } from './material-source';
+import {buildCourseSections,courseType,isCourseInfo,libraryTypeNames,matchesLibraryQuery,type LibraryType} from './course-library';
+import {plural} from './client-api';
 
 interface Props {
   audiences?:StudyAudience[];canAct?:boolean;
@@ -235,68 +237,58 @@ export default function MaterialLibrary({ audiences=[],canAct=true,subjects, mat
   const [scopeFilter,setScopeFilter]=useState('all');
   const [archived,setArchived]=useState<Material[]|null>(null);
   const [archiveError,setArchiveError]=useState('');
-  async function showArchive(){try{setArchived((await request<{archived:Material[]}>('/api/library')).archived);setArchiveError('');}catch(e){setArchiveError(e instanceof Error?e.message:'Архив недоступен.');}}
-  async function restore(m:Material){try{await request('/api/library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'restore',materialId:m.id})});await showArchive();await onRefresh();}catch(e){setArchiveError(e instanceof Error?e.message:'Не удалось восстановить.');}}
-  const [query, setQuery] = useState('');
-  const [kindFilter, setKindFilter] = useState<MaterialKind | 'all'>('all');
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadResult, setUploadResult] = useState('');
-  const refreshRef = useRef(onRefresh);
-  refreshRef.current = onRefresh;
-  const hasPending = materials.some((material) => material.status === 'queued' || material.status === 'extracting');
-
-  useEffect(() => {
-    if (!hasPending) return;
-    let active = false;
-    const timer = window.setInterval(async () => {
-      if (active || document.visibilityState !== 'visible') return;
-      active = true;
-      try { await refreshRef.current(); } catch { /* A subsequent refresh can recover a transient connection failure. */ }
-      finally { active = false; }
-    }, 3000);
-    return () => window.clearInterval(timer);
-  }, [hasPending]);
-
-  const selectedSubject = subjects.find((subject) => subject.id === subjectId);
-  const scoped = materials.filter(m=>(!subjectId||m.subjectId===subjectId)&&(scopeFilter==='all'||(m.access?.scope||'personal')===scopeFilter));
-  const needle = query.toLocaleLowerCase('ru');
-  const filtered = scoped.filter((material) => (kindFilter === 'all' || material.kind === kindFilter) && `${material.title} ${material.topic} ${material.filename}`.toLocaleLowerCase('ru').includes(needle));
-
-  return (
-    <section className="library-view">
-      <div className="library-heading">
-        <div><span className="eyebrow">МАТЕРИАЛЫ И КОНТЕКСТ</span><h1>Знания —<br /><em>на своём месте.</em></h1><p>Лекции, семинары и задания. Собери то, что нужно для следующего шага.</p></div>
-        <button className="button-primary library-upload-button" disabled={!canAct||!subjects.length} onClick={() => setUploadOpen(true)}><Plus size={19} />Добавить материал</button>
-      </div>
-      <div className="library-subjects" aria-label="Фильтр по предмету">
-        <button className={`library-subject-chip${!subjectId ? ' is-active' : ''}`} onClick={() => onSubjectChange('')}><Layers3 size={16} />Все предметы<span>{materials.length}</span></button>
-        {subjects.map((subject) => <button key={subject.id} className={`library-subject-chip${subjectId === subject.id ? ' is-active' : ''}`} onClick={() => onSubjectChange(subject.id)}><span className="library-subject-dot" style={{ backgroundColor: subject.color }} />{subject.shortName}<small className="library-subject-group">{subject.group}</small><span>{materials.filter((material) => material.subjectId === subject.id).length}</span></button>)}
-      </div>
-      <div className="library-access-filter"><label className="field">Область<select value={scopeFilter} onChange={e=>setScopeFilter(e.target.value)}><option value="all">Все доступные</option><option value="personal">Личные</option><option value="group">Группы</option><option value="stream">Потоки</option></select></label><button className="btn btn-secondary" onClick={()=>void showArchive()}>Архив</button></div>{archived&&<section className="settings-card"><div className="platform-list-row"><h3>Архив материалов</h3><button className="text-button" onClick={()=>setArchived(null)}>Закрыть</button></div>{archived.length?archived.map(m=><div className="platform-list-row" key={m.id}><span>{m.title} · версия {m.version}</span><button className="btn btn-secondary" disabled={!canAct} onClick={()=>void restore(m)}>Восстановить</button></div>):<p>Архив пуст.</p>}</section>}{archiveError&&<p role="alert">{archiveError}</p>}<div className="library-toolbar">
-        <div className="library-kind-tabs" aria-label="Тип материала"><button className={kindFilter === 'all' ? 'is-active' : ''} onClick={() => setKindFilter('all')}>Все материалы</button>{(['lecture', 'seminar', 'homework', 'notes'] as MaterialKind[]).map((kind) => <button key={kind} className={kindFilter === kind ? 'is-active' : ''} onClick={() => setKindFilter(kind)}>{kind === 'lecture' ? 'Лекции' : kind === 'seminar' ? 'Семинары' : kind === 'homework' ? 'Задания' : 'Заметки'}</button>)}</div>
-        <label className="library-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти материал" aria-label="Найти материал" />{query && <button className="icon-button" onClick={() => setQuery('')} aria-label="Очистить поиск"><X size={16} /></button>}</label>
-      </div>
-      {uploadResult && <div className="library-notice" role="status"><Check size={17} /><span>{uploadResult}</span><button className="icon-button" onClick={() => setUploadResult('')} aria-label="Скрыть сообщение"><X size={16} /></button></div>}
-      <div className="library-section-label"><h2>{selectedSubject?.name || 'Твоя библиотека'}</h2><span>{filtered.length} {filtered.length === 1 ? 'материал' : filtered.length >= 2 && filtered.length <= 4 ? 'материала' : 'материалов'}</span></div>
-      {filtered.length ? <div className="library-grid">
-        {filtered.map((material) => {
-          const subject = subjects.find((item) => item.id === material.subjectId);
-          const preview = material.blocks.find((block) => block.kind === 'text')?.text;
-          const pending = material.status === 'queued' || material.status === 'extracting';
-          return (
-            <article key={material.id} className={`material-card material-${material.kind}`}>
-              <button className="material-open" onClick={() => onOpen(material)} aria-label={`Открыть ${material.title}`}>
-                <div className="material-topline"><span className="material-kind"><BookOpen size={14} />{KIND_LABELS[material.kind]}</span><span className="material-filetype">{fileType(material)}</span></div>
-                <div className={`material-preview${!preview ? ' is-empty' : ''}`} aria-hidden="true">{preview ? <><span className="material-preview-rule" /><p>{preview.slice(0, 450)}</p></> : <>{isLinkOnly(material) ? <ArrowUpRight size={36} strokeWidth={1.25} /> : material.mimeType.startsWith('image/') ? <FileImage size={36} strokeWidth={1.25} /> : <FileText size={36} strokeWidth={1.25} />}<span>{pending ? 'Готовим текст' : isLinkOnly(material) ? 'Сохранённый источник' : 'Открой оригинал'}</span></>}</div>
-                <div className="material-card-body"><span className="material-subject-name">{subject?.shortName || 'Материал курса'}{material.isExample && <span className="material-example-badge">Пример</span>}</span><h3>{material.title}</h3><span className="material-scope">{material.access?.audienceLabel||'Личный материал'}</span>{material.topic && <p className="material-topic">{material.topic}</p>}<div className="material-meta">{isLinkOnly(material) ? 'Ссылка' : fileSize(material.size)}<span>·</span>Версия {material.version}<ArrowUpRight size={17} /></div></div>
-              </button>
-              <div className="material-footer"><span className={`material-status status-${material.status}`}>{pending ? <LoaderCircle size={12} className="spin" /> : <span className="status-dot" />}{isLinkOnly(material) && !material.blocks.length ? 'Только ссылка' : STATUS_LABELS[material.status]}</span><div className="material-card-actions">{isLinkOnly(material) ? material.sourceUrl && <a className="icon-button" href={material.sourceUrl} target="_blank" rel="noreferrer" aria-label={`Открыть ссылку ${material.title}`}><ArrowUpRight size={15} /></a> : hasOriginal(material)&&<a className="icon-button" href={`/api/materials/${material.id}/file`} download aria-label={`Скачать ${material.title}`}><ArrowDownToLine size={15} /></a>}<button className="icon-button" onClick={() => onFeedback(material)} aria-label={`Сообщить об ошибке в ${material.title}`}><MessageSquare size={15} /></button></div></div>
-            </article>
-          );
-        })}
-      </div> : <div className="library-empty"><span className="library-empty-icon"><BookOpen size={32} strokeWidth={1.3} /></span><h3>{query || kindFilter !== 'all' ? 'Пока ничего не нашлось' : 'Начнём с первой лекции'}</h3><p>{query || kindFilter !== 'all' ? 'Попробуй другое название или выбери все материалы.' : 'Добавь файл. Оригинал, извлечённый текст и версии будут рядом.'}</p>{!query && kindFilter === 'all' && <button className="button-primary" disabled={!canAct||!subjects.length} onClick={() => setUploadOpen(true)}><Plus size={18} />Добавить материал</button>}</div>}
-      <div className="library-bottom-note"><Layers3 size={16} /><p>Материалы для чата выбираются отдельно. В подборке повторяющийся текст сохранится один раз, а ссылки на источники останутся.</p></div>
-      {uploadOpen && <UploadDialog audiences={audiences} subjects={subjects} initialSubjectId={subjectId} onClose={() => setUploadOpen(false)} onUploaded={async (uploaded, complete) => { await onRefresh(); if (complete) setUploadOpen(false); setUploadResult(uploaded.length === 1 ? isLinkOnly(uploaded[0]) ? 'Ссылка сохранена. Содержимое сайта пока не добавляется в контекст ИИ.' : uploaded[0].duplicateOf ? 'Такой файл уже есть. Материал использует существующее извлечение.' : 'Материал добавлен. Его статус обновится после обработки.' : `Сохранено материалов: ${uploaded.length}. Статусы обновятся после обработки.`); }} />}
-    </section>
-  );
+  const [archiveBusy,setArchiveBusy]=useState(false);
+  const [query,setQuery]=useState('');
+  const deferredQuery=useDeferredValue(query);
+  const [kindFilter,setKindFilter]=useState<LibraryType>('all');
+  const [layout,setLayout]=useState<'list'|'cards'>('list');
+  const [collapsed,setCollapsed]=useState<Set<string>>(new Set());
+  const [uploadOpen,setUploadOpen]=useState(false);
+  const [uploadResult,setUploadResult]=useState('');
+  const refreshRef=useRef(onRefresh);refreshRef.current=onRefresh;
+  const hasPending=materials.some(m=>m.status==='queued'||m.status==='extracting');
+  useEffect(()=>{try{if(localStorage.getItem('msu-library-layout')==='cards')setLayout('cards');}catch{}},[]);
+  useEffect(()=>{setKindFilter('all');setScopeFilter('all');setQuery('');setCollapsed(new Set());window.scrollTo({top:0,left:0,behavior:'instant'});},[subjectId]);
+  useEffect(()=>{
+    if(!hasPending)return;
+    let busy=false;
+    const timer=window.setInterval(async()=>{if(busy||document.visibilityState!=='visible')return;busy=true;try{await refreshRef.current();}catch{}finally{busy=false;}},3000);
+    return()=>window.clearInterval(timer);
+  },[hasPending]);
+  function changeLayout(next:'list'|'cards'){setLayout(next);try{localStorage.setItem('msu-library-layout',next);}catch{}}
+  function reset(){setScopeFilter('all');setKindFilter('all');setQuery('');setCollapsed(new Set());}
+  function toggleSection(key:string){setCollapsed(old=>{const next=new Set(old);if(next.has(key))next.delete(key);else next.add(key);return next;});}
+  async function showArchive(){setArchiveBusy(true);setArchiveError('');try{setArchived((await request<{archived:Material[]}>('/api/library')).archived);}catch(e){setArchiveError(e instanceof Error?e.message:'Архив недоступен.');}finally{setArchiveBusy(false);}}
+  async function restore(m:Material){setArchiveBusy(true);setArchiveError('');try{await request('/api/library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'restore',materialId:m.id})});await showArchive();await onRefresh();}catch(e){setArchiveError(e instanceof Error?e.message:'Не удалось восстановить.');}finally{setArchiveBusy(false);}}
+  const selectedSubject=subjects.find(s=>s.id===subjectId);
+  const subjectMaterials=useMemo(()=>materials.filter(m=>!subjectId||m.subjectId===subjectId),[materials,subjectId]);
+  const filtered=useMemo(()=>subjectMaterials.filter(m=>(scopeFilter==='all'||(m.access?.scope||'personal')===scopeFilter)&&(kindFilter==='all'||(kindFilter==='course'?isCourseInfo(m):kindFilter==='notes'?m.kind==='notes'&&!isCourseInfo(m):m.kind===kindFilter))&&matchesLibraryQuery(m,deferredQuery)),[subjectMaterials,scopeFilter,kindFilter,deferredQuery]);
+  const sections=useMemo(()=>buildCourseSections(filtered,subjects),[filtered,subjects]);
+  const allCollapsed=sections.length>0&&sections.every(s=>collapsed.has(s.key));
+  const hasFilters=!!query||scopeFilter!=='all'||kindFilter!=='all';
+  const searching=query!==deferredQuery;
+  const kinds:[LibraryType,string][]=[['all','Все типы'],['course','О курсе'],['lecture','Лекции'],['seminar','Семинары'],['homework','Задания'],['notes','Дополнительные'],['rules','Правила курса']];
+  function materialItem(material:Material){
+    const pending=['queued','extracting'].includes(material.status),link=isLinkOnly(material),format=fileType(material),preview=material.blocks.find(b=>b.kind==='text')?.text;
+    const status=link&&!material.blocks.length?'Ссылка':STATUS_LABELS[material.status];
+    return <article key={material.id} className={`course-resource resource-${layout}`}>
+      <button className="resource-open" onClick={()=>onOpen(material)} aria-label={`Открыть ${material.title}`} title={material.title}>
+        <span className="resource-file-icon" aria-hidden="true">{link?<ArrowUpRight size={23}/>:material.mimeType.startsWith('image/')?<FileImage size={23}/>:<FileText size={23}/>}<small>{format}</small></span>
+        <span className="resource-main"><strong>{material.title}</strong><span className="resource-meta"><span>{libraryTypeNames[courseType(material)]}</span><span>{hasOriginal(material)?fileSize(material.size):link?'Внешний ресурс':'Текст'}</span><span>v{material.version}</span>{material.access?.audienceLabel&&<span className="resource-audience">{material.access.audienceLabel}</span>}{material.isExample&&<span className="resource-example">Пример</span>}<span className="resource-scope-label">{material.access?.audienceLabel||'Личный материал'}</span></span></span>
+        {layout==='cards'&&<span className={'resource-preview'+(!preview?' resource-preview-empty':'')}>{preview?preview.slice(0,180):hasOriginal(material)?'Открыть оригинал':link?'Открыть ссылку':'Открыть материал'}</span>}
+      </button>
+      <div className="resource-side"><span className={`resource-status resource-status-${link?'link':material.status}`} title={material.warnings.join(' ')||status}>{pending?<LoaderCircle size={13} className="spin"/>:material.status==='ready'&&!link?<Check size={14}/>:!link&&['limited','error'].includes(material.status)?<AlertCircle size={14}/>:<span className="status-dot"/>}<span className={material.status==='ready'&&!link?'resource-scope-label':'resource-status-label'}>{status}</span></span><div className="resource-actions">{link?material.sourceUrl&&<a className="icon-button" href={material.sourceUrl} target="_blank" rel="noreferrer" aria-label={`Открыть ссылку ${material.title}`} title="Открыть источник"><ArrowUpRight size={16}/></a>:hasOriginal(material)&&<a className="icon-button" href={`/api/materials/${material.id}/file?version=${material.version}&download=1`} download aria-label={`Скачать ${material.title}`} title="Скачать оригинал"><ArrowDownToLine size={16}/></a>}<button className="icon-button" onClick={()=>onFeedback(material)} aria-label={`Сообщить об ошибке в ${material.title}`} title="Сообщить об ошибке"><MessageSquare size={16}/></button></div></div>
+    </article>;
+  }
+  return <section className="library-view library-compact">
+    <header className="library-heading"><div><h1>{selectedSubject?.name||'Материалы'}</h1><p>{subjectMaterials.length} {plural(subjectMaterials.length,'материал','материала','материалов')}{selectedSubject?` · ${selectedSubject.semester} семестр`:' · все предметы'}</p></div><button className="button-primary library-upload-button" disabled={!canAct||!subjects.length} onClick={()=>setUploadOpen(true)} aria-label="Добавить материал"><Plus size={17}/><span>Добавить материал</span></button></header>
+    <nav className="library-subjects" aria-label="Фильтр по предмету"><button className={`library-subject-chip${!subjectId?' is-active':''}`} aria-pressed={!subjectId} onClick={()=>onSubjectChange('')}><Layers3 size={15}/>Все предметы<span>{materials.length}</span></button>{subjects.map(s=><button key={s.id} className={`library-subject-chip${subjectId===s.id?' is-active':''}`} aria-pressed={subjectId===s.id} onClick={()=>onSubjectChange(s.id)}><span className="library-subject-dot" style={{backgroundColor:s.color}}/>{s.shortName}<span>{materials.filter(m=>m.subjectId===s.id).length}</span></button>)}</nav>
+    <div className="course-library-controls"><label className="library-search"><Search size={17}/><input value={query} onChange={e=>{setQuery(e.target.value);setCollapsed(new Set());}} placeholder="Поиск по материалам" aria-label="Найти материал"/>{query&&<button className="icon-button" onClick={()=>setQuery('')} aria-label="Очистить поиск"><X size={15}/></button>}</label><div className="library-scope-tabs" role="group" aria-label="Область материалов">{[['all','Все'],['personal','Личные'],['group','Группа'],['stream','Поток']].map(([id,label])=><button key={id} aria-pressed={scopeFilter===id} onClick={()=>{setScopeFilter(id);setCollapsed(new Set());}}>{label}</button>)}</div><div className="library-compact-tools"><label className="library-type-filter"><span className="resource-scope-label">Тип материала</span><select aria-label="Тип материала" value={kindFilter} onChange={e=>{setKindFilter(e.target.value as LibraryType);setCollapsed(new Set());}}>{kinds.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select><ChevronDown size={13}/></label><div className="library-view-switch" role="group" aria-label="Вид библиотеки"><button aria-label="Список" title="Список" aria-pressed={layout==='list'} onClick={()=>changeLayout('list')}><List size={17}/></button><button aria-label="Карточки" title="Карточки" aria-pressed={layout==='cards'} onClick={()=>changeLayout('cards')}><LayoutGrid size={16}/></button></div><button className="library-archive-button" disabled={archiveBusy} onClick={()=>void showArchive()} aria-label="Открыть архив" title="Архив">{archiveBusy?<LoaderCircle size={16} className="spin"/>:<Archive size={16}/>}<span>Архив</span></button></div></div>
+    {uploadResult&&<div className="library-notice" role="status"><Check size={16}/><span>{uploadResult}</span><button className="icon-button" onClick={()=>setUploadResult('')} aria-label="Скрыть сообщение"><X size={15}/></button></div>}
+    {archived&&<section className="library-archive-panel"><div className="platform-list-row"><h2>Архив материалов</h2><button className="text-button" onClick={()=>setArchived(null)}>Закрыть</button></div>{archived.length?archived.map(m=><div className="platform-list-row" key={m.id}><span>{m.title} · v{m.version}</span><button className="btn btn-secondary" disabled={!canAct||archiveBusy} onClick={()=>void restore(m)}>Восстановить</button></div>):<p className="muted">Архив пуст.</p>}</section>}{archiveError&&<p className="form-error" role="alert">{archiveError}</p>}
+    <div className="course-library-summary" aria-live="polite"><div>{searching?<LoaderCircle size={13} className="spin"/>:<BookOpen size={14}/>}<span>{hasFilters?`Найдено: ${filtered.length} из ${subjectMaterials.length}`:'Разделы курса'}</span>{hasFilters&&<button onClick={reset} className="text-button">Сбросить фильтры<X size={12}/></button>}</div>{sections.length>0&&<button className="text-button" onClick={()=>setCollapsed(allCollapsed?new Set():new Set(sections.map(s=>s.key)))}>{allCollapsed?'Развернуть все':'Свернуть все'}<ChevronDown size={14} className={allCollapsed?'':'collapse-all-icon'}/></button>}</div>
+    <div className="course-library-sections" aria-busy={searching}>{sections.map(group=>{const expanded=!collapsed.has(group.key),id='course-section-'+encodeURIComponent(group.key);return <section className="course-section" key={group.key}><h2><button className="course-section-toggle" aria-expanded={expanded} aria-controls={id} onClick={()=>toggleSection(group.key)}><ChevronDown size={18} className={expanded?'':'section-collapsed'}/><span>{!subjectId&&<small>{subjects.find(s=>s.id===group.subjectId)?.name}</small>}{group.title}</span><span className="course-section-count">{group.materials.length}</span></button></h2><div id={id} hidden={!expanded} className={layout==='cards'?'course-card-grid':'course-resource-list'}>{group.materials.map(materialItem)}</div></section>;})}</div>
+    {!filtered.length&&<div className="course-library-empty"><BookOpen size={29}/><h2>{subjectMaterials.length?'Нет материалов по этим фильтрам':'Здесь пока нет материалов'}</h2><p>{subjectMaterials.length?'Измени запрос или сбрось фильтры, чтобы увидеть все разделы курса.':'Добавь первый документ, лекцию или задание.'}</p>{hasFilters?<button className="btn btn-secondary" onClick={reset}>Показать все материалы</button>:<button className="btn btn-primary" disabled={!canAct||!subjects.length} onClick={()=>setUploadOpen(true)}><Plus size={16}/>Добавить материал</button>}</div>}
+    {uploadOpen&&<UploadDialog audiences={audiences} subjects={subjects} initialSubjectId={subjectId} onClose={()=>setUploadOpen(false)} onUploaded={async(uploaded,complete)=>{await onRefresh();if(complete)setUploadOpen(false);setUploadResult(uploaded.length===1?isLinkOnly(uploaded[0])?'Ссылка сохранена. Для контекста ИИ добавь сам документ.':'Материал сохранён. Статус обновится после обработки.':`Сохранено материалов: ${uploaded.length}.`);}}/>}
+  </section>;
 }

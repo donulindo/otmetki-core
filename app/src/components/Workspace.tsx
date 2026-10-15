@@ -29,6 +29,7 @@ export default function Workspace({initialViewer,repositoryUrl=null}: {initialVi
   const refreshPlatform=useCallback(async()=>setPlatform(await request<PlatformState>('/api/platform')),[]);
   const canAct=(f:string)=>platform?.features.find(x=>x.id===f)?.canAct??false;
   const [section,setSection]=useState<Section>('home');
+  useEffect(()=>{window.scrollTo({top:0,left:0,behavior:'instant'});},[section]);
   const [subjects,setSubjects]=useState<Subject[]>([]);
   const [subjectId,setSubjectId]=useState('');
   const [storedMaterials,setMaterials]=useState<Material[]>([]);

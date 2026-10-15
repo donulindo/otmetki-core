@@ -1,4 +1,5 @@
 import 'server-only';
+import {coursePosition} from './course-position';
 import { z } from 'zod';
 import { AccessError } from './auth';
 import { getChat, getFeedback, getMaterial, getMaterialVersion,getMaterialFile } from './db';
@@ -16,7 +17,7 @@ export function authorizeMaterial(viewer: Viewer, id: string, version?: number) 
 export function authorizeChat(viewer: Viewer, id: string) { const chat = getChat(id, viewer.id); if (!chat) throw new AccessError(404, 'Беседа не найдена.'); return chat; }
 export function authorizeFeedback(viewer: Viewer, id: string) { const item = getFeedback(id, viewer.id); if (!item) throw new AccessError(404, 'Обращение не найдено.'); return item; }
 export function publicMaterial(material: Material): Material {
-  return { ...material,hasOriginal:Boolean(getMaterialFile(material.id,material.ownerId,material.version)), blocks: material.blocks.map(block => ({ ...block, imageFile: block.imageFile ? `/api/materials/${material.id}/image?block=${encodeURIComponent(block.id)}&version=${material.version}` : undefined })) };
+  return { ...material,coursePosition:coursePosition(material),hasOriginal:Boolean(getMaterialFile(material.id,material.ownerId,material.version)), blocks: material.blocks.map(block => ({ ...block, imageFile: block.imageFile ? `/api/materials/${material.id}/image?block=${encodeURIComponent(block.id)}&version=${material.version}` : undefined })) };
 }
 export async function readJSON(request: Request, maxBytes = 256 * 1024): Promise<unknown> {
   const claimed = Number(request.headers.get('content-length') || '0'); if (claimed > maxBytes) throw new AccessError(413, 'Запрос слишком большой.');
